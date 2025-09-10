@@ -1,0 +1,4 @@
+Here is a paragraph explaining the purpose of the AI Mock Interview web application:
+
+Purpose of the AI Mock Interview Web App
+The AI Mock Interview App is designed to help job seekers and students effectively prepare for real-world interviews by simulating a structured, five-question interview session with instant, actionable feedback and a prediction score of their interview performance. Users answer popular interview questions under a time limit, receive tailored hints to guide their responses, and are provided with AI-generated feedback highlighting strengths and improvement areas for each answer. At the end of the process, participants receive a personalized prediction percentage estimating their chances of successfully cracking the interview, alongside recommendations to further enhance their performance for future opportunities
