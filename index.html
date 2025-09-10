@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="en" >
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>AI Mock Interview App - Interview Series & Prediction %</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+    body {
+      font-family: 'Inter', sans-serif;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      background-color: #f9fafb;
+    }
+    textarea::-webkit-scrollbar {
+      width: 8px;
+    }
+    textarea::-webkit-scrollbar-track {
+      background: #e5e7eb;
+    }
+    textarea::-webkit-scrollbar-thumb {
+      background: #9ca3af;
+      border-radius: 4px;
+    }
+    textarea::-webkit-scrollbar-thumb:hover {
+      background: #6b7280;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col items-center justify-center p-4">
+  <div class="w-full max-w-3xl bg-white shadow-2xl rounded-3xl p-8 md:p-12 transform transition-transform duration-300 hover:scale-[1.02]">
+    <h1 class="text-4xl font-extrabold text-center text-teal-700 mb-8 select-none">
+      🎤 AI Mock Interview App - 5 Question Series & Prediction
+    </h1>
+
+    <div class="space-y-6">
+      <div id="topic-container" class="bg-teal-100 p-5 rounded-xl flex justify-between items-center transition duration-300 select-text">
+        <div id="topic-text" class="text-xl font-semibold text-teal-900">
+          Click <b>Start</b> to begin the interview!
+        </div>
+        <div class="flex flex-col items-center">
+          <div id="timer" class="text-2xl font-extrabold text-teal-900 select-none tracking-widest">--:--</div>
+          <div class="w-32 h-2 mt-2 bg-teal-400 rounded-sm overflow-hidden shadow-inner">
+            <div id="timer-bar" class="h-full bg-teal-700 rounded-sm transition-all ease-linear duration-1000" style="width: 0%"></div>
+          </div>
+        </div>
+      </div>
+
+      <textarea id="response-area" rows="7" maxlength="2500" placeholder="Type your response here..." class="w-full p-5 text-gray-900 text-lg border-2 border-gray-300 rounded-xl resize-y focus:outline-none focus:ring-4 focus:ring-teal-400 focus:border-teal-600 transition duration-300 disabled:opacity-70 disabled:cursor-not-allowed" disabled></textarea>
+
+      <div class="flex justify-between items-center text-sm text-gray-500 select-none">
+        <div id="char-count">0 / 2500 characters</div>
+        <button id="hint-btn" disabled class="bg-yellow-400 hover:bg-yellow-500 text-white font-semibold py-2 px-5 rounded-xl shadow-md transition duration-300 disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-yellow-300">
+          Show Hint
+        </button>
+      </div>
+
+      <div id="hint-container" class="hidden bg-yellow-50 border-l-4 border-yellow-400 text-yellow-900 p-4 rounded-lg mt-4 select-text">
+        <p id="hint-text" class="text-base"></p>
+      </div>
+
+      <div id="ai-feedback" class="hidden bg-blue-50 border-l-4 border-blue-400 text-blue-900 p-5 rounded-lg mt-6 select-text whitespace-pre-wrap">
+        <p id="feedback-content" class="text-lg leading-relaxed"></p>
+      </div>
+
+      <div id="loading-indicator" class="hidden text-center text-teal-700 font-bold mt-6 select-none" aria-live="polite">
+        Analyzing your response...
+      </div>
+
+      <div class="flex flex-col sm:flex-row justify-center gap-6 mt-8">
+        <button id="start-btn" class="w-full sm:w-auto bg-teal-700 hover:bg-teal-800 text-white font-bold py-4 px-8 rounded-2xl shadow-lg transition-colors duration-300 focus:outline-none focus:ring-4 focus:ring-teal-600 focus:ring-offset-2">
+          Start
+        </button>
+        <button id="submit-btn" disabled class="w-full sm:w-auto bg-green-600 hover:bg-green-700 text-white font-bold py-4 px-8 rounded-2xl shadow-lg transition-colors duration-300 disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-4 focus:ring-green-500 focus:ring-offset-2">
+          Submit Response
+        </button>
+        <button id="reset-btn" class="w-full sm:w-auto bg-gray-300 hover:bg-gray-400 text-gray-800 font-semibold py-4 px-8 rounded-2xl shadow-md transition-colors duration-300 focus:outline-none focus:ring-4 focus:ring-gray-400 focus:ring-offset-2">
+          Reset
+        </button>
+      </div>
+    </div>
+  </div>
+
+<script>
+  // Constants
+  const API_ENDPOINT = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent';
+  const apiKey = "AIzaSyDtpI_sYqGuUtRMwl5PkheSonYfpVrdHHc"; // Provide your Gemini API key here or inject securely at runtime
+
+  // Five fixed questions
+  const questions = [
+    "Tell me about yourself.",
+    "What are your strengths and weaknesses?",
+    "Why do you want to join our company?",
+    "Describe a challenge you faced and how you overcame it.",
+    "Where do you see yourself in 5 years?"
+  ];
+
+  // Hints for each question
+  const hints = {
+    "Tell me about yourself.": "Focus on your professional background, achievements, and relevant skills.",
+    "What are your strengths and weaknesses?": "Be honest and show self-awareness, highlighting strengths and how you improve weaknesses.",
+    "Why do you want to join our company?": "Research their values and align your answer with their mission.",
+    "Describe a challenge you faced and how you overcame it.": "Tell a specific story emphasizing problem-solving and outcomes.",
+    "Where do you see yourself in 5 years?": "Discuss your career goals and how this position fits into your plan."
+  };
+
+  // DOM elements
+  const startBtn = document.getElementById('start-btn');
+  const submitBtn = document.getElementById('submit-btn');
+  const resetBtn = document.getElementById('reset-btn');
+  const hintBtn = document.getElementById('hint-btn');
+  const topicText = document.getElementById('topic-text');
+  const timerDisplay = document.getElementById('timer');
+  const timerBar = document.getElementById('timer-bar');
+  const responseArea = document.getElementById('response-area');
+  const hintContainer = document.getElementById('hint-container');
+  const hintText = document.getElementById('hint-text');
+  const feedbackDiv = document.getElementById('ai-feedback');
+  const feedbackContent = document.getElementById('feedback-content');
+  const loadingIndicator = document.getElementById('loading-indicator');
+  const charCount = document.getElementById('char-count');
+
+  // State variables
+  let currentQuestionIndex = -1;
+  let timeLimit = 120; // seconds per question
+  let countdownInterval = null;
+  let interviewResponses = [];
+  let isInterviewActive = false;
+  let awaitingFeedback = false;
+
+  function formatTime(seconds) {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
+  }
+
+  responseArea.addEventListener('input', () => {
+    charCount.textContent = `${responseArea.value.length} / 2500 characters`;
+  });
+
+  hintBtn.addEventListener('click', () => {
+    const q = questions[currentQuestionIndex];
+    hintText.textContent = hints[q] || "No hint available.";
+    hintContainer.classList.remove('hidden');
+    hintBtn.disabled = true;
+  });
+
+  function proceedToNextQuestion() {
+    currentQuestionIndex++;
+    if (currentQuestionIndex < questions.length) {
+      isInterviewActive = true;
+      responseArea.disabled = false;
+      responseArea.value = '';
+      charCount.textContent = '0 / 2500 characters';
+      feedbackDiv.classList.add('hidden');
+      feedbackContent.textContent = '';
+      hintContainer.classList.add('hidden');
+      hintText.textContent = '';
+      hintBtn.disabled = false;
+      submitBtn.disabled = false;
+      responseArea.focus();
+
+      const question = questions[currentQuestionIndex];
+      topicText.textContent = `Question ${currentQuestionIndex + 1}/${questions.length}: ${question}`;
+      timerDisplay.textContent = formatTime(timeLimit);
+      timerBar.style.width = '100%';
+
+      let timeLeft = timeLimit;
+      clearInterval(countdownInterval);
+      countdownInterval = setInterval(() => {
+        timeLeft--;
+        timerDisplay.textContent = formatTime(timeLeft);
+        timerBar.style.width = `${(timeLeft / timeLimit) * 100}%`;
+
+        if (timeLeft === 10) {
+          timerDisplay.classList.add('text-red-600', 'font-extrabold');
+        } else if (timeLeft > 10) {
+          timerDisplay.classList.remove('text-red-600', 'font-extrabold');
+        }
+
+        if (timeLeft <= 0) {
+          clearInterval(countdownInterval);
+          timerDisplay.textContent = "Time's up!";
+          timerBar.style.width = '0%';
+          isInterviewActive = false;
+          responseArea.disabled = true;
+          submitBtn.disabled = true;
+          hintBtn.disabled = true;
+          submitResponse();
+        }
+      }, 1000);
+    } else {
+      finalizeInterview();
+    }
+  }
+
+  async function getAnswerFeedback(question, userAnswer) {
+    loadingIndicator.classList.remove('hidden');
+    feedbackDiv.classList.add('hidden');
+    feedbackContent.textContent = "";
+
+    if (!userAnswer.trim()) {
+      loadingIndicator.classList.add('hidden');
+      feedbackDiv.classList.remove('hidden');
+      feedbackContent.textContent = "You did not provide an answer. Please try to answer next questions.";
+      return "No answer provided.";
+    }
+
+    const systemPrompt =
+      "You are a professional mock interview coach. For the user's answer you will: 1) tell if the answer addresses the question adequately (Correct or Incorrect), 2) give clear guidance on what to answer or improve, and 3) list key points the user should include. Keep it concise but helpful, using no more than 5 sentences.";
+    const userPrompt = `Question: "${question}"\nUser's Answer: "${userAnswer}"\nPlease analyze the answer for correctness, provide guidance, and key improvement points.`;
+
+    const payload = {
+      contents: [{ parts: [{ text: userPrompt }] }],
+      systemInstruction: { parts: [{ text: systemPrompt }] },
+    };
+
+    try {
+      if (!apiKey.trim()) {
+        throw new Error("API key is not set. Please configure your API key.");
+      }
+      const response = await fetch(`${API_ENDPOINT}?key=${encodeURIComponent(apiKey)}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! Status: ${response.status}`);
+      }
+      const result = await response.json();
+      const feedback = result?.candidates?.[0]?.content?.parts?.[0]?.text || "No feedback received.";
+      loadingIndicator.classList.add("hidden");
+      feedbackDiv.classList.remove("hidden");
+      feedbackContent.textContent = feedback;
+      return feedback;
+    } catch (error) {
+      loadingIndicator.classList.add("hidden");
+      feedbackDiv.classList.remove("hidden");
+      const errorMsg = `Error getting feedback: ${error.message}`;
+      feedbackContent.textContent = errorMsg;
+      return errorMsg;
+    }
+  }
+
+  async function getFinalPrediction(allQandA) {
+    loadingIndicator.classList.remove('hidden');
+    submitBtn.disabled = true;
+    hintBtn.disabled = true;
+    feedbackDiv.classList.add('hidden');
+    feedbackContent.textContent = '';
+
+    const systemPrompt =
+      "You are an expert interviewer. Review the following interview questions and the user's answers. Provide a clear percentage chance (0% to 100%) that the user will crack the interview, along with a brief explanation and recommendations.";
+
+    let userPrompt = "Interview Summary:\n";
+    allQandA.forEach((item, index) => {
+      userPrompt += `Q${index + 1}: ${item.question}\nAnswer: ${item.answer}\n\n`;
+    });
+
+    userPrompt += "Please provide your overall interview scoring percentage chance and recommendations.";
+
+    const payload = {
+      contents: [{ parts: [{ text: userPrompt }] }],
+      systemInstruction: { parts: [{ text: systemPrompt }] },
+    };
+
+    try {
+      if (!apiKey.trim()) {
+        throw new Error("API key is not set. Please configure your API key.");
+      }
+      const response = await fetch(`${API_ENDPOINT}?key=${encodeURIComponent(apiKey)}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! Status: ${response.status}`);
+      }
+      const result = await response.json();
+      const prediction = result?.candidates?.[0]?.content?.parts?.[0]?.text || "No prediction received.";
+      loadingIndicator.classList.add("hidden");
+      feedbackDiv.classList.remove('hidden');
+      feedbackContent.textContent = prediction;
+    } catch (error) {
+      loadingIndicator.classList.add("hidden");
+      feedbackDiv.classList.remove("hidden");
+      feedbackContent.textContent = `Error getting prediction: ${error.message}`;
+    }
+  }
+
+  async function submitResponse() {
+    if (awaitingFeedback) return;
+    awaitingFeedback = true;
+
+    const question = questions[currentQuestionIndex];
+    const answer = responseArea.value.trim();
+
+    const feedback = await getAnswerFeedback(question, answer);
+
+    interviewResponses.push({ question, answer, feedback });
+
+    submitBtn.disabled = true;
+    hintBtn.disabled = true;
+    responseArea.disabled = true;
+
+    setTimeout(() => {
+      awaitingFeedback = false;
+      feedbackDiv.classList.add('hidden');
+      feedbackContent.textContent = '';
+      hintContainer.classList.add('hidden');
+      hintText.textContent = '';
+
+      proceedToNextQuestion();
+    }, 7000);
+  }
+
+  function finalizeInterview() {
+    topicText.textContent = "Interview Completed! Getting overall prediction...";
+    timerDisplay.textContent = "--:--";
+    timerBar.style.width = "0%";
+    responseArea.value = "";
+    responseArea.disabled = true;
+    submitBtn.disabled = true;
+    hintBtn.disabled = true;
+
+    getFinalPrediction(interviewResponses);
+  }
+
+  function startInterview() {
+    if (isInterviewActive || awaitingFeedback) return;
+
+    currentQuestionIndex = -1;
+    interviewResponses = [];
+    feedbackDiv.classList.add('hidden');
+    feedbackContent.textContent = '';
+    hintContainer.classList.add('hidden');
+    hintText.textContent = '';
+    hintBtn.disabled = false;
+    submitBtn.disabled = false;
+
+    proceedToNextQuestion();
+  }
+
+  function resetApp() {
+    clearInterval(countdownInterval);
+    currentQuestionIndex = -1;
+    interviewResponses = [];
+    isInterviewActive = false;
+    awaitingFeedback = false;
+
+    topicText.textContent = "Click Start to begin the interview!";
+    timerDisplay.textContent = "--:--";
+    timerBar.style.width = "0%";
+    responseArea.value = "";
+    responseArea.disabled = true;
+    charCount.textContent = '0 / 2500 characters';
+    submitBtn.disabled = true;
+    hintBtn.disabled = true;
+    feedbackDiv.classList.add('hidden');
+    feedbackContent.textContent = '';
+    hintContainer.classList.add('hidden');
+    hintText.textContent = '';
+    loadingIndicator.classList.add('hidden');
+  }
+
+  startBtn.addEventListener('click', startInterview);
+  submitBtn.addEventListener('click', submitResponse);
+  resetBtn.addEventListener('click', resetApp);
+
+  resetApp();
+</script>
+</body>
+</html>
